@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: go-app-build-
+spec:
+  entrypoint: build
+  templates:
+  - name: build
+    inputs:
+      artifacts:
+      - name: git-pull
+        path: /
+        git:
+          repo: https://github.com/ShirMon/Testrepo.git
+          revision: master
+    container:
+      image: golang:alpine3.13
+      command: [go]
+      args: ["build", "-x", "/Testrepo/application/main.go"]
