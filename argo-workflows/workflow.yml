@@ -3,17 +3,58 @@ kind: Workflow
 metadata:
   generateName: go-app-build-
 spec:
-  entrypoint: build
+  entrypoint: main
   templates:
+  - name: main
+    dag:
+      tasks:
+        - name: goBuild
+          template: build
+        - name: dockerBuild
+          template: kaniko
+          depends: goBuild
   - name: build
     inputs:
       artifacts:
-      - name: git-pull
-        path: /
+      - name: testRepo
+        path: /sandbox
         git:
           repo: https://github.com/ShirMon/Testrepo.git
           revision: master
     container:
       image: golang:alpine3.13
       command: [go]
-      args: ["build", "-x", "/Testrepo/application/main.go"]
+      args: ["build", "-x", "/sandbox/application/main.go"]
+    outputs:
+      artifacts:
+        - name: binArtifact
+          path: /sandbox/application/main
+        - name: dockerFile
+          path: /sandbox/Dockerfile
+  - name: kaniko
+    inputs:
+      artifacts:
+        - name: gofile
+          path: /builddir
+        - name: dockerFile
+          path: /builddir
+    container:
+      image: gcr.io/kaniko-project/executor:latest
+      args: ["--dockerfile=/builddir/Dockerfile",
+            "--context=dir://builddir",
+            "--destination=shirm/gohello"]
+      volumeMounts:
+        - name: kaniko-secret
+          mountPath: /kaniko/.docker
+        - name: dockerfile-storage
+          mountPath: /builddir
+  volumes:
+    - name: kaniko-secret
+      secret:
+        secretName: regcred
+        items:
+          - key: .dockerconfigjson
+            path: config.json
+    - name: dockerfile-storage
+      persistentVolumeClaim:
+        claimName: dockerfile-claim
