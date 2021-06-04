@@ -8,11 +8,18 @@ spec:
   - name: main
     dag:
       tasks:
-        - name: goBuild
+        - name: go-build
           template: build
         - name: dockerBuild
           template: kaniko
-          depends: goBuild
+          dependencies:
+            - go-build
+          arguments:
+            artifacts:
+              - name: binArtifact
+                from: "{{tasks.go-build.outputs.artifacts.binArtifact}}"
+              - name: dockerFile
+                from: "{{tasks.go-build.outputs.artifacts.dockerFile}}"
   - name: build
     inputs:
       artifacts:
@@ -24,7 +31,7 @@ spec:
     container:
       image: golang:alpine3.13
       command: [go]
-      args: ["build", "-x", "/sandbox/application/main.go"]
+      args: ["build", "-o", "/sandbox/application/main", "/sandbox/application/main.go"]
     outputs:
       artifacts:
         - name: binArtifact
@@ -34,20 +41,19 @@ spec:
   - name: kaniko
     inputs:
       artifacts:
-        - name: gofile
-          path: /builddir
+        - name: binArtifact
+          path: /builddir/main
         - name: dockerFile
-          path: /builddir
+          path: /builddir/Dockerfile
     container:
       image: gcr.io/kaniko-project/executor:latest
       args: ["--dockerfile=/builddir/Dockerfile",
             "--context=dir://builddir",
-            "--destination=shirm/gohello"]
+            "--destination=shirm/gohello:latest",
+            "--no-push"]
       volumeMounts:
         - name: kaniko-secret
           mountPath: /kaniko/.docker
-        - name: dockerfile-storage
-          mountPath: /builddir
   volumes:
     - name: kaniko-secret
       secret:
@@ -55,6 +61,3 @@ spec:
         items:
           - key: .dockerconfigjson
             path: config.json
-    - name: dockerfile-storage
-      persistentVolumeClaim:
-        claimName: dockerfile-claim

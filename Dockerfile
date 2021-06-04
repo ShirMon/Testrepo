@@ -1,6 +1,6 @@
 FROM alpine
 
 WORKDIR /app
-COPY /builddir/main /app
+COPY main .
 
 CMD [ "/app/main" ]
