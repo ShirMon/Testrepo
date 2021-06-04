@@ -48,9 +48,8 @@ spec:
     container:
       image: gcr.io/kaniko-project/executor:latest
       args: ["--dockerfile=/builddir/Dockerfile",
-            "--context=dir://builddir",
-            "--destination=shirm/gohello:latest",
-            "--no-push"]
+            "--context=dir:///builddir",
+            "--destination=shirmon/gohello:latest"]
       volumeMounts:
         - name: kaniko-secret
           mountPath: /kaniko/.docker
